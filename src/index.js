@@ -18,45 +18,42 @@ app.use("/content", express.static(path.join(__dirname, "public")));
 
 //Add GET request with path '/'
 app.get("/", (_, res) => {
-    res.sendFile("./public/index.html", { root: __dirname }, (err) => {
-        console.log(err);
-    });
-    res.status(200);
+  res.sendFile("./public/index.html", { root: __dirname }, (err) => {
+    console.log(err);
+  });
+  res.status(200);
 });
 //Add GET request with path '/todos'
 app.get("/todos", (_, res) => {
-    res.header("Content-Type", "application/json");
-    res.sendFile(todoFilePath, { root: __dirname });
+  res.header("Content-Type", "application/json");
+  res.sendFile(todoFilePath, { root: __dirname });
 });
 
 //Add GET request with path '/todos/overdue'
 app.get("/todos/overdue", (req, res) => {
-    res.header("Content-Type", "application/json");
-    let todos = pullData()
-    .filter((todo) => !todo.completed && Date.parse(todo.due) < new Date())
-    res.send(todos);
+  res.header("Content-Type", "application/json");
+  let todos = pullData().filter(
+    (todo) => !todo.completed && Date.parse(todo.due) < new Date()
+  );
+  res.send(todos);
 });
 
 //Add GET request with path '/todos/completed'
 app.get("/todos/completed", (req, res) => {
-    const todos = pullData()
-    .filter((todos)=> todos.completed === true);
-    let completed = []
-    const result = todos.filter((item) => item.completed == true);
-    res.send(result);
+  const todos = pullData().filter((todos) => todos.completed === true);
+  let completed = [];
+  const result = todos.filter((todo) => todo.completed == true);
+  res.send(result);
 });
 app.get("/todos/:id", (req, res) => {
-    const id = req.params.id;
-    const data = fs.readFileSync(__dirname + todoFilePath);
-    // console.log(JSON.parse(data))
-    let todos = JSON.parse(data);
-    // console.log(id)
-    const matched_id = todos.find((el) => el.id == id);
-    if (matched_id) {
-        res.send(JSON.stringify(matched_id, null, 2));
-    } else {
-        res.status(404).send();
-    }
+  const id = req.params.id;
+  const data = fs.readFileSync(__dirname + todoFilePath);
+  let todos = pullData().find((todo) => todo.id == id);
+  if (result) {
+    res.send(JSON.stringify(result, null, 2));
+  } else {
+    res.status(404).send();
+  }
 });
 //Add POST request with path '/todos'
 app.post("/todos", (req, res) => {
@@ -90,79 +87,102 @@ app.post("/todos", (req, res) => {
 
 //Add PATCH request with path '/todos/:id
 app.patch("/todos/:id", (req, res) => {
-  const id = req.params.id
-  const todos = pullData();
-  const body = req.body
-  let newTodo = req.body.name;
-  const result = todos.find((todo) => todo.id == id);
-if (result) {
-  result.name, result.due = newTodo;
-const bodyResult = result.body(body)
-const interject = []
-bodyResult.forEach(result => {
-  if (result.includes(result)){
-    interject.push(result)
+  const id = req.params.id;
+  const body = req.body;
+  const data = fs.readFileSync(__dirname + todoFilePath);
+  let todos = pullData()
+  const profile = todos.find((el) => el.id == id);
+  if (profile) {
+    const info = ["name", "due"];
+    let bodyResults = Object.keys(body);
+    const interject = [];
+    bodyResults.forEach((key) => {
+      if (info.includes(key)) {
+        interject.push(key);
+      }
+    });
+    if (
+      interject.length === 0 ||
+      (body.due && new Date(body.due) == "Invalid Date")
+    ) {
+      res.status(404).end();
+    }
+    interject.forEach((result) => {
+      profile[result] = body[result];
+    });
+    todos = JSON.stringify(todos, null, 2);
+    fs.writeFile(__dirname + todoFilePath, todos, (err) => {
+      if (err) {
+        throw err;
+      }
+    });
+    res.status(200).end();
+  } else {
+    res.status(404).end();
   }
-})
-if (interject.length === 0 || (body.due && new Date(body.due) == "Invalid date")) {
-  res.status().send() 
-}
-interject.forEach((result) => {
-  profile[result] = body[result];
 });
-todos = JSON.stringify(todos, null, 2)
-res.setHead("Content-Type", "application/json").status(200).send();
-} else {
-res.status(404).send();
-}
-});
-
 
 //Add POST request with path '/todos/:id/complete
-  app.post('/todos/:id/complete', (req, res) => {
-    const id = req.params.id
-    const data = pullData();
-  
-    const profile = todos.find((todos) => todos.id == id)
-    if(profile){
-      profile.completed = true
-      todos = JSON.stringify(todos, null, 2)
-      
-      fs.writeFile(__dirname + todoFilePath, todos, (err) => {
-        if (err) {
-          throw err;
-        } else {
-          res.status(200).send()
-        }})
-  
-    } else {
-      res.status(404).send()
-    }
-  
-  });
-
-//Add POST request with path '/todos/:id/undo
-app.post('/todos/:id/undo', (req, res) => {
-  const todos = pullData();
+app.post("/todos/:id/complete", (req, res) => {
   const id = req.params.id;
-  const todo = todos.find((todo) => todo.id === id && todo.completed === true);
+  const data = fs.readFileSync(__dirname + todoFilePath);
+  const todos = JSON.parse(data)
 
-  if (todos) {
-    res.header("Content-Type", "/application/json/").send(todo);
+  const profile = todos.find((todos) => todos.id == id)
+  if (profile) {
+    profile.completed = true;
+
+    fs.writeFile(__dirname + todoFilePath, todos, (err) => {
+      if (err) {
+        throw err;
+      } else {
+        res.status(404).send();
+      }
+    });
   } else {
-    res.status(404).send();
+    res.status(200).send();
   }
 });
-//Add DELETE request with path '/todos/:id
-app.delete('/todos/:id', (_, res) => {
-  const todos = getTodos();
-  const id = _.params.id;
 
-  const todo = todos.find((todo) => todo.id === id);
-  if (todos === -1) {
-    res.setHeader("Content-Type", "/application/json/");
-    todos.splice(todos.indexOf(todos), 3);
-    res.json(todos);
+//Add POST request with path '/todos/:id/undo
+app.post("/todos/:id/undo", (req, res) => {
+  let todos = JSON.parse(data)
+  const id = req.params.id;
+  const data = fs.readFileSync(__dirname + todoFilePath);
+  const profile = todos.find(
+    (todos) => todos.id === id)
+
+  if (profile) {
+    profile.completed = false
+    todos = JSON.stringify(todos, null, 2);
+    fs.writeFile(__dirname + todoFilePath, todos, (err) => {
+      if (err) {
+        throw err;
+      } else {
+        res.status(200).end();
+      }
+    });
+  } else {
+    res.status(404).end();
+  }
+});
+
+//Add DELETE request with path '/todos/:id
+app.delete("/todos/:id", (req, res) => {
+  
+  const id = req.params.id;
+  const data = fs.readFileSync(__dirname + todoFilePath)
+  const todos = getTodos()
+  .find((todos) => todos.id === id);
+  if (todos) {
+    todos = todos.filter((todos) => todos.id != id);
+    todos = JSON.stringify(todos, null, 2);
+    fs.writeFile(__dirname + todoFilePath, todos, (err) => {
+      if (err) {
+        throw err;
+      }
+      res.send();
+    })
   } else {
     res.status(404).send();
   }
